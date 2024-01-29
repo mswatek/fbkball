@@ -1,0 +1,4 @@
+yahoofantasy
+streamlit
+pandas
+numpy
