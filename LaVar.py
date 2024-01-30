@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import requests,base64
 
+st. set_page_config(layout="wide")
+
 def refreshAuthorizationToken(refreshToken:str) -> dict:
     """Uses existing refresh token to get the new access token"""
 
@@ -63,20 +65,10 @@ except Exception:
     league: list = ctx.get_leagues("nba", 2023)[0]
 
 
+## separate the table into 6 matchups
+## totals column for score
 
-
-# Print the name of the league and whether it was private/public
-print(league.name + " -- " + league.league_type)
-
-# Iterate through standings and show every team's win/loss record
-for team in league.standings():
-    outcomes = team.team_standings.outcome_totals
-    print(
-        f"  #{team.team_standings.rank}\t{team.name}\t"
-        f"({outcomes.wins}-{outcomes.losses}-{outcomes.ties})"
-    )
-
-print("~~~~~~~~ WEEK 14 ~~~~~~~~")
+st.header("~~~~~~~~ WEEK 14 ~~~~~~~~")
 
 df = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
 df2 = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
@@ -88,10 +80,156 @@ for matchup in week_14.matchups:
 
 df_combined = pd.concat([df,df2])
 df_wide = pd.pivot(df_combined, index='team', columns='cat', values='stat')
+df_wide['Week'] = 14
+df_wide[['FGM', 'FGA']] = df_wide['FGM/FGA'].str.split('/', expand=True)
+df_wide[['FTM', 'FTA']] = df_wide['FTM/FTA'].str.split('/', expand=True)
 
-st.write(df_wide)
 
-cols = ['FGM/FGA', 'FG%', 'FTM/FTA', 'FT%', '3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
-df_new = df_wide[cols]
+cols = ['Week','FGM/FGA','FGM','FGA', 'FG%', 'FTM/FTA','FTM','FTA', 'FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
+df_14 = df_wide[cols]
 
-st.write(df_new)
+st.write(df_14)
+
+
+st.header("~~~~~~~~ WEEK 15 ~~~~~~~~")
+
+df = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
+df2 = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
+week_15 = league.weeks()[14] ###figure out how to pull when it is not yet populated
+for matchup in week_15.matchups:
+    for team1_stat, team2_stat in zip(matchup.team1_stats, matchup.team2_stats):
+        df.loc[len(df)] = [matchup.team1.name, team1_stat.display, team1_stat.value]
+        df2.loc[len(df2)] = [matchup.team2.name, team2_stat.display, team2_stat.value]
+
+df_combined = pd.concat([df,df2])
+df_wide = pd.pivot(df_combined, index='team', columns='cat', values='stat')
+df_wide['Week'] = 15
+df_wide[['FGM', 'FGA']] = df_wide['FGM/FGA'].str.split('/', expand=True)
+df_wide[['FTM', 'FTA']] = df_wide['FTM/FTA'].str.split('/', expand=True)
+
+
+cols = ['Week','FGM/FGA','FGM','FGA', 'FG%', 'FTM/FTA','FTM','FTA', 'FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
+df_15 = df_wide[cols]
+
+st.write(df_15)
+
+
+st.header("~~~~~~~~ Combined ~~~~~~~~")
+
+df_combined = pd.concat([df_14,df_15])
+df_combined.drop(columns=['FGM/FGA', 'FG%','FTM/FTA','FT%'])
+
+df_matchups = df_combined.groupby(['team'])[["FGM", "FGA","FTM","FTA","3PTM","PTS","REB","AST","ST","BLK","TO"]].apply(lambda x : x.astype(int).sum())
+df_matchups['FG%'] = df_matchups['FGM']/df_matchups['FGA']
+df_matchups['FT%'] = df_matchups['FTM']/df_matchups['FTA']
+df_matchups['FGM/FGA'] = df_matchups['FGM'].astype(str)+"/"+ df_matchups['FGA'].astype(str)
+df_matchups['FTM/FTA'] = df_matchups['FTM'].astype(str)+"/"+ df_matchups['FTA'].astype(str)
+
+cols = ['FGM/FGA','FG%','FTM/FTA','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
+df_matchups = df_matchups[cols]
+
+st.write(df_matchups)
+
+
+st.header("~~~~~~~~ Matchups ~~~~~~~~")
+
+##### set up all matchups
+matchup1 = df_matchups[df_matchups.index.isin(['Big Ballers','Oliver James First of His Name'])]
+matchup2 = df_matchups[df_matchups.index.isin(["Shawn's Team",'Jamal Crossover'])]
+matchup3 = df_matchups[df_matchups.index.isin(['There Goes My Herro','Dwight for MVP'])]
+matchup4 = df_matchups[df_matchups.index.isin(['Arizona Capybaras','Young Bloods'])]
+matchup5 = df_matchups[df_matchups.index.isin(["Dray's Iron Fist",'House Markkanen'])]
+matchup6 = df_matchups[df_matchups.index.isin(['Stepback to Freedom','Blue Checkmarks'])]
+
+##### matchup 1
+max_val = matchup1.drop(columns=['TO']).select_dtypes(np.number).max(axis=0)
+count_max = matchup1.eq(max_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+min_val = matchup1[['TO']].min(axis=0)
+count_min = matchup1.eq(min_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+total_1 = pd.concat([count_max,count_min])
+total_1 = total_1.groupby(['team'])[["Total"]].apply(lambda x : x.astype(int).sum())
+
+matchup1_final = matchup1.merge(total_1, left_on='team', right_on='team')
+
+##### matchup 2
+max_val = matchup2.drop(columns=['TO']).select_dtypes(np.number).max(axis=0)
+count_max = matchup2.eq(max_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+min_val = matchup2[['TO']].min(axis=0)
+count_min = matchup2.eq(min_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+total_2 = pd.concat([count_max,count_min])
+total_2 = total_2.groupby(['team'])[["Total"]].apply(lambda x : x.astype(int).sum())
+
+matchup2_final = matchup2.merge(total_2, left_on='team', right_on='team')
+
+##### matchup 3
+max_val = matchup3.drop(columns=['TO']).select_dtypes(np.number).max(axis=0)
+count_max = matchup3.eq(max_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+min_val = matchup3[['TO']].min(axis=0)
+count_min = matchup3.eq(min_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+total_3 = pd.concat([count_max,count_min])
+total_3 = total_3.groupby(['team'])[["Total"]].apply(lambda x : x.astype(int).sum())
+
+matchup3_final = matchup3.merge(total_3, left_on='team', right_on='team')
+
+##### matchup 4
+max_val = matchup4.drop(columns=['TO']).select_dtypes(np.number).max(axis=0)
+count_max = matchup4.eq(max_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+min_val = matchup4[['TO']].min(axis=0)
+count_min = matchup4.eq(min_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+total_4 = pd.concat([count_max,count_min])
+total_4 = total_4.groupby(['team'])[["Total"]].apply(lambda x : x.astype(int).sum())
+
+matchup4_final = matchup4.merge(total_4, left_on='team', right_on='team')
+
+##### matchup 5
+max_val = matchup5.drop(columns=['TO']).select_dtypes(np.number).max(axis=0)
+count_max = matchup5.eq(max_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+min_val = matchup5[['TO']].min(axis=0)
+count_min = matchup5.eq(min_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+total_5 = pd.concat([count_max,count_min])
+total_5 = total_5.groupby(['team'])[["Total"]].apply(lambda x : x.astype(int).sum())
+
+matchup5_final = matchup5.merge(total_5, left_on='team', right_on='team')
+
+##### matchup 6
+max_val = matchup6.drop(columns=['TO']).select_dtypes(np.number).max(axis=0)
+count_max = matchup6.eq(max_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+min_val = matchup6[['TO']].min(axis=0)
+count_min = matchup6.eq(min_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+total_6 = pd.concat([count_max,count_min])
+total_6 = total_6.groupby(['team'])[["Total"]].apply(lambda x : x.astype(int).sum())
+
+matchup6_final = matchup6.merge(total_6, left_on='team', right_on='team')
+
+
+##### print all matchups
+
+st.write(matchup1_final.style.highlight_max(subset = ['FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK','Total'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0))
+
+st.write(matchup2_final.style.highlight_max(subset = ['FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK','Total'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0))
+
+st.write(matchup3_final.style.highlight_max(subset = ['FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK','Total'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0))
+
+st.write(matchup4_final.style.highlight_max(subset = ['FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK','Total'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0))
+
+st.write(matchup5_final.style.highlight_max(subset = ['FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK','Total'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0))
+
+st.write(matchup6_final.style.highlight_max(subset = ['FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK','Total'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0))
