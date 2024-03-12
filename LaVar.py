@@ -73,8 +73,8 @@ except Exception:
 
 df = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
 df2 = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
-week_14 = league.weeks()[18]
-for matchup in week_14.matchups:
+week_19 = league.weeks()[18]
+for matchup in week_19.matchups:
     for team1_stat, team2_stat in zip(matchup.team1_stats, matchup.team2_stats):
         df.loc[len(df)] = [matchup.team1.name, team1_stat.display, team1_stat.value]
         df2.loc[len(df2)] = [matchup.team2.name, team2_stat.display, team2_stat.value]
@@ -94,8 +94,8 @@ df_19 = df_wide[cols]
 
 df = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
 df2 = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
-week_15 = league.weeks()[19] ###figure out how to pull when it is not yet populated
-for matchup in week_15.matchups:
+week_20 = league.weeks()[19] ###figure out how to pull when it is not yet populated
+for matchup in week_20.matchups:
     for team1_stat, team2_stat in zip(matchup.team1_stats, matchup.team2_stats):
         df.loc[len(df)] = [matchup.team1.name, team1_stat.display, team1_stat.value]
         df2.loc[len(df2)] = [matchup.team2.name, team2_stat.display, team2_stat.value]
