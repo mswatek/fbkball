@@ -138,7 +138,7 @@ df_20.index.names = ['Team']
 df_combined = pd.concat([df_19,df_20])
 df_combined.drop(columns=['FGM/FGA', 'FG%','FTM/FTA','FT%'])
 
-df_matchups = df_combined.groupby(['team'])[["FGM", "FGA","FTM","FTA","3PTM","PTS","REB","AST","ST","BLK","TO"]].apply(lambda x : x.astype(int).sum())
+df_matchups = df_combined.groupby(['Team'])[["FGM", "FGA","FTM","FTA","3PTM","PTS","REB","AST","ST","BLK","TO"]].apply(lambda x : x.astype(int).sum())
 df_matchups['FG%'] = df_matchups['FGM']/df_matchups['FGA']
 df_matchups['FT%'] = df_matchups['FTM']/df_matchups['FTA']
 df_matchups['FGM/FGA'] = df_matchups['FGM'].astype(str)+"/"+ df_matchups['FGA'].astype(str)
