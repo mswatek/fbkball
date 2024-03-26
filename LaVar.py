@@ -7,7 +7,7 @@ import requests,base64
 st.set_page_config(layout="wide",page_title="LaVar Ball Academy")
 st.title(":blue[LaVar Ball Academy]")
 
-tab1, tab2 = st.tabs(["Semifinals", "Individual Weeks"])
+tab1, tab2, tab3 = st.tabs(["Finals","Semifinals", "Individual Weeks"])
 
 def refreshAuthorizationToken(refreshToken:str) -> dict:
     """Uses existing refresh token to get the new access token"""
@@ -178,9 +178,107 @@ def scores(df):
 
 matchup1, matchup2, matchup3, matchup4, matchup5, matchup6 = [scores(df) for df in (matchup1, matchup2, matchup3, matchup4, matchup5, matchup6)]
 
+#### WEEK 21 #####
+
+df = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
+df2 = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
+week_21 = league.weeks()[20]
+for matchup in week_21.matchups:
+    for team1_stat, team2_stat in zip(matchup.team1_stats, matchup.team2_stats):
+        df.loc[len(df)] = [matchup.team1.name, team1_stat.display, team1_stat.value]
+        df2.loc[len(df2)] = [matchup.team2.name, team2_stat.display, team2_stat.value]
+
+df_combined = pd.concat([df,df2])
+df_wide = pd.pivot(df_combined, index='team', columns='cat', values='stat')
+df_wide['Week'] = 21
+
+df_wide[['FGM', 'FGA']] = df_wide['FGM/FGA'].str.split('/', expand=True)
+df_wide[['FTM', 'FTA']] = df_wide['FTM/FTA'].str.split('/', expand=True)
+
+cols = ['Week','FGM/FGA','FGM','FGA', 'FG%', 'FTM/FTA','FTM','FTA', 'FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
+df_21 = df_wide[cols]
+df_21.index.names = ['Team']
+
+#### WEEK 22 #####
+
+df = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
+df2 = pd.DataFrame({'team':[], 'cat':[], 'stat':[]})
+week_22 = league.weeks()[21]
+for matchup in week_22.matchups:
+    for team1_stat, team2_stat in zip(matchup.team1_stats, matchup.team2_stats):
+        df.loc[len(df)] = [matchup.team1.name, team1_stat.display, team1_stat.value]
+        df2.loc[len(df2)] = [matchup.team2.name, team2_stat.display, team2_stat.value]
+
+df_combined = pd.concat([df,df2])
+df_wide = pd.pivot(df_combined, index='team', columns='cat', values='stat')
+df_wide['Week'] = 22
+
+df_wide[['FGM', 'FGA']] = df_wide['FGM/FGA'].str.split('/', expand=True)
+df_wide[['FTM', 'FTA']] = df_wide['FTM/FTA'].str.split('/', expand=True)
+
+cols = ['Week','FGM/FGA','FGM','FGA', 'FG%', 'FTM/FTA','FTM','FTA', 'FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
+df_22 = df_wide[cols]
+df_22.index.names = ['Team']
+
+##### Semis Combined #####
+
+df_combined = pd.concat([df_21,df_22])
+df_combined.drop(columns=['FGM/FGA', 'FG%','FTM/FTA','FT%'])
+
+df_matchups = df_combined.groupby(['Team'])[["FGM", "FGA","FTM","FTA","3PTM","PTS","REB","AST","ST","BLK","TO"]].apply(lambda x : x.astype(int).sum())
+df_matchups['FG%'] = df_matchups['FGM']/df_matchups['FGA']
+df_matchups['FT%'] = df_matchups['FTM']/df_matchups['FTA']
+df_matchups['FGM/FGA'] = df_matchups['FGM'].astype(str)+"/"+ df_matchups['FGA'].astype(str)
+df_matchups['FTM/FTA'] = df_matchups['FTM'].astype(str)+"/"+ df_matchups['FTA'].astype(str)
+
+cols = ['FGM/FGA','FG%','FTM/FTA','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
+df_matchups = df_matchups[cols]
+df_matchups.index.names = ['Team']
+
+##### Finals Matchups #####
+
+##### set up all matchups
+finals1 = df_matchups[df_matchups.index.isin(['Big Ballers','House Markkanen'])]
+finals2 = df_matchups[df_matchups.index.isin(['Blue Checkmarks','Young Bloods'])]
+finals3 = df_matchups[df_matchups.index.isin(['Stepback to Freedom',"Arizona Capybaras"])]
+finals4 = df_matchups[df_matchups.index.isin(['Jamal Crossover',"Shawn's Team"])]
+
+def scores(df):
+    max_val = df.drop(columns=['TO']).select_dtypes(np.number).max(axis=0)
+    count_max = df.eq(max_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+    min_val = df[['TO']].min(axis=0)
+    count_min = df.eq(min_val, axis=1).sum(axis=1).reset_index(name ='Total')
+
+    total_1 = pd.concat([count_max,count_min])
+    total_1 = total_1.groupby(['Team'])[["Total"]].apply(lambda x : x.astype(int).sum())
+
+    df = df.merge(total_1, left_on='Team', right_on='Team')
+
+    cols = ['Total','FGM/FGA','FG%','FTM/FTA','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK', 'TO']
+    df = df[cols]
+
+    return df
+
+
+finals1, finals2, finals3, finals4 = [scores(df) for df in (finals1, finals2, finals3, finals4)]
+
 #################### PRINTING TO SITE #####################
 
 with tab1:
+    st.header("~~~~~~~~ Championship Bracket ~~~~~~~~")
+    st.write(finals1.style.highlight_max(subset = ['Total','FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0).format({'FG%': "{:.3f}",'FT%': "{:.3f}"}))
+    st.write(finals2.style.highlight_max(subset = ['Total','FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0).format({'FG%': "{:.3f}",'FT%': "{:.3f}"}))
+    st.header("~~~~~~~~ Consoloation Bracket ~~~~~~~~")
+    st.write(finals3.style.highlight_max(subset = ['Total','FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0).format({'FG%': "{:.3f}",'FT%': "{:.3f}"}))
+    st.write(finals4.style.highlight_max(subset = ['Total','FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK'], color = 'lightgreen', axis = 0)
+         .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0).format({'FG%': "{:.3f}",'FT%': "{:.3f}"}))
+
+
+with tab2:
     st.header("~~~~~~~~ Championship Bracket ~~~~~~~~")
     st.write(matchup1.style.highlight_max(subset = ['Total','FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK'], color = 'lightgreen', axis = 0)
          .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0).format({'FG%': "{:.3f}",'FT%': "{:.3f}"}))
@@ -198,8 +296,13 @@ with tab1:
     st.write(matchup6.style.highlight_max(subset = ['Total','FG%','FT%','3PTM', 'PTS', 'REB', 'AST', 'ST', 'BLK'], color = 'lightgreen', axis = 0)
          .highlight_min(subset = ['TO',], color = 'lightgreen', axis = 0).format({'FG%': "{:.3f}",'FT%': "{:.3f}"}))
 
-with tab2:
+with tab3:
+    st.header("~~~~~~~~ Week 22 (Week 2 of Finals) ~~~~~~~~")
+    st.write(df_22)
+    st.header("~~~~~~~~ Week 21 (Week 1 of Finals) ~~~~~~~~")
+    st.write(df_21)
     st.header("~~~~~~~~ Week 20 (Week 2 of Semis) ~~~~~~~~")
     st.write(df_20)
     st.header("~~~~~~~~ Week 19 (Week 1 of Semis) ~~~~~~~~")
     st.write(df_19)
+
